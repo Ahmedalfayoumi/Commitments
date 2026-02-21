@@ -857,6 +857,9 @@ function CommitmentsDashboard() {
     const saved = localStorage.getItem('commitment_sort_config');
     return saved ? JSON.parse(saved) : { field: 'due_date', order: 'ASC' };
   });
+  const [showAddCommitment, setShowAddCommitment] = useState(false);
+  const [editingCommitment, setEditingCommitment] = useState<Commitment | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     fetchCommitments();
@@ -907,6 +910,37 @@ function CommitmentsDashboard() {
     }));
   };
 
+  const handleAddCommitment = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    try {
+      const formData = new FormData(e.currentTarget);
+      const payload = Object.fromEntries(formData.entries());
+      
+      const res = await fetch('/api/commitments', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (res.ok) {
+        setShowAddCommitment(false);
+        fetchCommitments();
+      } else {
+        const data = await res.json();
+        alert(`فشل الإضافة: ${data.error || 'خطأ غير معروف'}`);
+      }
+    } catch (error) {
+      console.error('Add commitment error:', error);
+      alert('حدث خطأ أثناء محاولة الإضافة');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'نشط': return <Clock className="w-4 h-4 text-amber-500" />;
@@ -940,7 +974,10 @@ function CommitmentsDashboard() {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <button className="flex items-center gap-2 bg-slate-900 text-white px-5 py-2.5 rounded-xl font-medium hover:bg-slate-800 transition-all shadow-sm active:scale-95">
+            <button 
+              onClick={() => setShowAddCommitment(true)}
+              className="flex items-center gap-2 bg-slate-900 text-white px-5 py-2.5 rounded-xl font-medium hover:bg-slate-800 transition-all shadow-sm active:scale-95"
+            >
               <Plus className="w-5 h-5" />
               التزام جديد
             </button>
@@ -1120,6 +1157,70 @@ function CommitmentsDashboard() {
           </div>
         </div>
       </div>
+
+      {/* Add Commitment Modal */}
+      <AnimatePresence>
+        {showAddCommitment && (
+          <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 z-50">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white w-full max-w-lg rounded-3xl p-6 sm:p-8 shadow-2xl max-h-[90vh] overflow-y-auto"
+            >
+              <h2 className="text-2xl font-bold mb-6">إضافة التزام جديد</h2>
+              <form onSubmit={handleAddCommitment} className="space-y-4">
+                <div className="space-y-1">
+                  <label className="text-sm font-bold text-slate-600">رقم الالتزام</label>
+                  <input name="commit_number" required className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl" placeholder="مثال: COM-2024-001" />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-sm font-bold text-slate-600">تاريخ الاستحقاق</label>
+                    <input name="due_date" type="date" required className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-right" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-sm font-bold text-slate-600">المبلغ</label>
+                    <input name="amount" type="number" step="0.01" required className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl" placeholder="0.00" />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-sm font-bold text-slate-600">الحساب</label>
+                  <input name="account" required className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl" placeholder="اسم الحساب أو البنك" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-sm font-bold text-slate-600">الوصف</label>
+                  <textarea name="description" rows={3} className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl" placeholder="تفاصيل إضافية عن الالتزام..."></textarea>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-sm font-bold text-slate-600">الحالة</label>
+                  <select name="status" defaultValue="نشط" className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl">
+                    <option value="نشط">نشط</option>
+                    <option value="مكتمل">مكتمل</option>
+                    <option value="ملغي">ملغي</option>
+                  </select>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-3 pt-4">
+                  <button 
+                    type="submit" 
+                    disabled={isSubmitting}
+                    className="flex-1 bg-slate-900 text-white py-3 rounded-xl font-bold hover:bg-slate-800 transition-all disabled:opacity-50"
+                  >
+                    {isSubmitting ? 'جاري الحفظ...' : 'حفظ الالتزام'}
+                  </button>
+                  <button 
+                    type="button" 
+                    onClick={() => setShowAddCommitment(false)} 
+                    className="flex-1 bg-slate-100 text-slate-600 py-3 rounded-xl font-bold hover:bg-slate-200 transition-all"
+                  >
+                    إلغاء
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

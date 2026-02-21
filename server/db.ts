@@ -1,6 +1,7 @@
 import Database from 'better-sqlite3';
 import path from 'path';
 import fs from 'fs';
+import bcrypt from 'bcryptjs';
 
 const DB_DIR = path.join(process.cwd(), 'data');
 
@@ -47,6 +48,13 @@ export function initMasterDb() {
       FOREIGN KEY (company_id) REFERENCES companies(id)
     );
   `);
+
+  // Seed admin user if not exists
+  const adminExists = masterDb.prepare('SELECT * FROM users WHERE username = ?').get('admin');
+  if (!adminExists) {
+    const hashedPassword = bcrypt.hashSync('admin', 10);
+    masterDb.prepare('INSERT INTO users (username, password, role) VALUES (?, ?, ?)').run('admin', hashedPassword, 'admin');
+  }
 
   return masterDb;
 }

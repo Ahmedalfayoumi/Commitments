@@ -1,5 +1,5 @@
 import express from 'express';
-import { getTenantDb } from '../db.js';
+import { getTenantDb } from '../db';
 
 const router = express.Router();
 

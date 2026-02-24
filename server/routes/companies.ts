@@ -1,13 +1,37 @@
 import express from 'express';
-import { getMasterDb } from '../db.js';
+import { getMasterDb } from '../db';
 
 const router = express.Router();
 
 router.get('/', (req, res) => {
   try {
     const db = getMasterDb();
-    const companies = db.prepare('SELECT * FROM companies ORDER BY created_at DESC').all();
+    const companies = db.prepare(`
+      SELECT c.*, curr.symbol as currency_symbol 
+      FROM companies c
+      LEFT JOIN currencies curr ON c.currency_code = curr.code
+      ORDER BY c.created_at DESC
+    `).all();
     res.json(companies);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get('/:id', (req, res) => {
+  try {
+    const db = getMasterDb();
+    const { id } = req.params;
+    const company = db.prepare(`
+      SELECT c.*, curr.symbol as currency_symbol 
+      FROM companies c
+      LEFT JOIN currencies curr ON c.currency_code = curr.code
+      WHERE c.id = ?
+    `).get(id);
+    if (!company) {
+      return res.status(404).json({ error: 'الشركة غير موجودة' });
+    }
+    res.json(company);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
@@ -19,22 +43,22 @@ router.post('/', (req, res) => {
     const { 
       name_en, name_ar, company_type, sectors, country, city,
       street, building_name, building_number, floor, office_number,
-      phone, signatory_name, signatory_phone, logo, favicon
+      phone, signatory_name, signatory_phone, logo, favicon, currency_code
     } = req.body;
     
     const stmt = db.prepare(`
       INSERT INTO companies (
         name_en, name_ar, company_type, sectors, country, city,
         street, building_name, building_number, floor, office_number,
-        phone, signatory_name, signatory_phone, logo, favicon
+        phone, signatory_name, signatory_phone, logo, favicon, currency_code
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     
     const result = stmt.run(
       name_en, name_ar, company_type, sectors, country, city,
       street, building_name, building_number, floor, office_number,
-      phone, signatory_name, signatory_phone, logo, favicon
+      phone, signatory_name, signatory_phone, logo, favicon, currency_code || 'SAR'
     );
     res.json({ id: result.lastInsertRowid });
   } catch (error: any) {
@@ -48,7 +72,7 @@ router.put('/:id', (req, res) => {
     const { 
       name_en, name_ar, company_type, sectors, country, city,
       street, building_name, building_number, floor, office_number,
-      phone, signatory_name, signatory_phone, logo, favicon
+      phone, signatory_name, signatory_phone, logo, favicon, currency_code
     } = req.body;
     const { id } = req.params;
     
@@ -56,14 +80,14 @@ router.put('/:id', (req, res) => {
       UPDATE companies 
       SET name_en = ?, name_ar = ?, company_type = ?, sectors = ?, country = ?, city = ?,
           street = ?, building_name = ?, building_number = ?, floor = ?, office_number = ?,
-          phone = ?, signatory_name = ?, signatory_phone = ?, logo = ?, favicon = ?
+          phone = ?, signatory_name = ?, signatory_phone = ?, logo = ?, favicon = ?, currency_code = ?
       WHERE id = ?
     `);
     
     stmt.run(
       name_en, name_ar, company_type, sectors, country, city,
       street, building_name, building_number, floor, office_number,
-      phone, signatory_name, signatory_phone, logo, favicon,
+      phone, signatory_name, signatory_phone, logo, favicon, currency_code,
       id
     );
     res.json({ success: true });

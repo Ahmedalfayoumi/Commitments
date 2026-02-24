@@ -35,7 +35,15 @@ export function initMasterDb() {
       signatory_phone TEXT,
       logo TEXT,
       favicon TEXT,
+      currency_code TEXT DEFAULT 'SAR',
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS currencies (
+      code TEXT PRIMARY KEY,
+      name_ar TEXT NOT NULL,
+      name_en TEXT NOT NULL,
+      symbol TEXT NOT NULL
     );
 
     CREATE TABLE IF NOT EXISTS users (
@@ -54,6 +62,24 @@ export function initMasterDb() {
   if (!adminExists) {
     const hashedPassword = bcrypt.hashSync('admin', 10);
     masterDb.prepare('INSERT INTO users (username, password, role) VALUES (?, ?, ?)').run('admin', hashedPassword, 'admin');
+  }
+
+  // Seed default currencies
+  const currenciesCount = masterDb.prepare('SELECT COUNT(*) as count FROM currencies').get() as { count: number };
+  if (currenciesCount.count === 0) {
+    const defaultCurrencies = [
+      ['SAR', 'ريال سعودي', 'Saudi Riyal', 'ر.س'],
+      ['USD', 'دولار أمريكي', 'US Dollar', '$'],
+      ['EUR', 'يورو', 'Euro', '€'],
+      ['AED', 'درهم إماراتي', 'UAE Dirham', 'د.إ'],
+      ['KWD', 'دينار كويتي', 'Kuwaiti Dinar', 'د.ك'],
+      ['BHD', 'دينار بحريني', 'Bahraini Dinar', 'د.ب'],
+      ['OMR', 'ريال عماني', 'Omani Rial', 'ر.ع'],
+      ['JOD', 'دينار أردني', 'Jordanian Dinar', 'د.أ'],
+      ['EGP', 'جنيه مصري', 'Egyptian Pound', 'ج.م']
+    ];
+    const insertCurrency = masterDb.prepare('INSERT INTO currencies (code, name_ar, name_en, symbol) VALUES (?, ?, ?, ?)');
+    defaultCurrencies.forEach(curr => insertCurrency.run(...curr));
   }
 
   return masterDb;

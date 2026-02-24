@@ -1,6 +1,6 @@
 import express from 'express';
 import bcrypt from 'bcryptjs';
-import { getMasterDb } from '../db.js';
+import { getMasterDb } from '../db';
 
 const router = express.Router();
 

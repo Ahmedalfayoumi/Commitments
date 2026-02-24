@@ -2,13 +2,14 @@ import express from 'express';
 import cors from 'cors';
 import jwt from 'jsonwebtoken';
 import { createServer as createViteServer } from 'vite';
-import { initMasterDb, getTenantDb } from './server/db.js';
-import authRoutes from './server/routes/auth.js';
-import companiesRoutes from './server/routes/companies.js';
-import commitmentsRoutes from './server/routes/commitments.js';
-import paymentsRoutes from './server/routes/payments.js';
-import reportsRoutes from './server/routes/reports.js';
-import usersRoutes from './server/routes/users.js';
+import { initMasterDb, getTenantDb } from './server/db';
+import authRoutes from './server/routes/auth';
+import companiesRoutes from './server/routes/companies';
+import commitmentsRoutes from './server/routes/commitments';
+import paymentsRoutes from './server/routes/payments';
+import reportsRoutes from './server/routes/reports';
+import usersRoutes from './server/routes/users';
+import currenciesRoutes from './server/routes/currencies';
 
 const PORT = 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
@@ -45,6 +46,10 @@ async function startServer() {
   // Initialize master database
   initMasterDb();
 
+  app.get('/api/health', (req, res) => {
+    res.json({ status: 'ok' });
+  });
+
   // API Routes
   app.use('/api/auth', authRoutes);
   app.use('/api/companies', authenticateToken, authorizeAdmin, companiesRoutes);
@@ -52,6 +57,7 @@ async function startServer() {
   app.use('/api/payments', authenticateToken, paymentsRoutes);
   app.use('/api/reports', authenticateToken, reportsRoutes);
   app.use('/api/users', authenticateToken, authorizeAdmin, usersRoutes);
+  app.use('/api/currencies', authenticateToken, currenciesRoutes);
 
   // Vite middleware for development
   if (process.env.NODE_ENV !== 'production') {
